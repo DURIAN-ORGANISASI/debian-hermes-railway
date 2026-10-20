@@ -1,0 +1,7 @@
+.env
+.env.local
+*.log
+.hermes/
+__pycache__/
+.pytest_cache/
+.DS_Store
