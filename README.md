@@ -54,7 +54,7 @@ Aturan variabel:
 
 ## 3. Setup Hermes yang benar — lakukan setelah Volume /opt/data terpasang
 
-Masuk ke terminal web dan jalankan satu per satu:
+Masuk ke terminal web Railway, lalu jalankan perintah satu per satu:
 
 ~~~bash
 command -v hermes
@@ -62,25 +62,53 @@ hermes --version
 hermes setup
 ~~~
 
-Dalam wizard setup:
-1. Pilih provider/model yang benar-benar memiliki API key atau akses akun aktif.
-2. Masukkan API key melalui prompt Hermes; jangan tempel secret ke README, issue, atau terminal command yang tersimpan di riwayat.
-3. Selesaikan wizard hingga kembali ke shell.
+### Pilihan wizard yang disarankan
 
-Kemudian jalankan:
+Nama dan urutan opsi dapat berubah menurut versi Hermes. Cocokkan berdasarkan nama/fungsi opsi, bukan hanya nomor urut.
+
+| Prompt wizard | Pilihan yang disarankan | Alasan |
+|---|---|---|
+| Model/provider | Pilih provider yang API key atau login-nya benar-benar kamu miliki. Jika memakai NVIDIA NIM, gunakan NVIDIA dan pastikan kredensial NVIDIA aktif. | Model chat perlu kredensial valid. Provider model berbeda dari provider tools seperti pencarian web dan TTS. |
+| Terminal backend | **Keep current (local)** | Terminal dijalankan langsung di container Railway. Tidak perlu menyiapkan Docker-in-Docker hanya untuk penggunaan normal Hermes. |
+| Image generation | **Skip / configure later** jika belum membutuhkan generate gambar atau belum punya provider/key. | Fitur gambar opsional; melewatinya tidak mematikan chat Telegram/Discord. |
+| Text-to-speech (TTS) | **Microsoft Edge TTS / Edge TTS** | Opsi gratis yang tidak memerlukan API key terpisah. |
+| Web search | **Tavily** jika ingin mengikuti tutorial ini. Jika wizard meminta API key, isi key Tavily asli bila ada; gunakan skip/kosong hanya jika wizard mengizinkan. | Mode tanpa key dapat memiliki batasan lebih ketat. Pilih provider yang benar-benar ditampilkan wizard. |
+| Shared metrics / telemetry | **No thanks** | Tidak mengaktifkan pengumpulan metrik bersama. |
+
+Jika kamu memilih provider pencarian yang berbeda, hasil `hermes doctor` akan menampilkan provider aktif, misalnya `web search (firecrawl)`. Itu berarti Firecrawl yang aktif, bukan Tavily; bila ingin menggantinya, gunakan `hermes setup tools` atau wizard tools yang tersedia pada versi terpasang.
+
+Jangan memasukkan placeholder seperti `YOUR_API_KEY` sebagai kredensial nyata. Selesaikan wizard sampai muncul **Setup Complete** dan kembali ke shell. Perintah `hermes doctor` mungkin menampilkan peringatan login untuk provider lain yang tidak kamu gunakan; itu tidak otomatis berarti provider/model aktif gagal.
+
+### Setelah wizard selesai
+
+Jalankan:
+
+~~~bash
+hermes doctor
+hermes status
+~~~
+
+Pastikan nama model dan provider pada `hermes status` sesuai pilihanmu. Setelah itu, tes chat CLI biasa dengan menjalankan `hermes`; kirim pesan singkat, lalu keluar dari sesi chat sesuai petunjuk CLI.
+
+Kemudian konfigurasi channel pesan:
 
 ~~~bash
 hermes gateway setup
 ~~~
 
-Di wizard Gateway, pilih Telegram dan/atau Discord yang ingin digunakan, lalu ikuti prompt token dan izin pengguna. Gunakan ID numerik akun pengguna bila diminta. Jangan gunakan nama tampilan/nickname sebagai pengganti user ID. Setelah selesai, jalankan pemeriksaan:
+Pilih Telegram dan/atau Discord, masukkan token bot yang benar, dan ikuti prompt otorisasi. Bila wizard menanyakan apakah akunmu boleh berbicara dengan bot, jawab **Yes** untuk akun yang benar-benar ingin kamu izinkan.
+
+**Penting tentang prompt Home Channel:** jika wizard bertanya apakah user ID yang ditampilkan akan dipakai sebagai *home channel*, pastikan ID tersebut memang milik platform/channel yang sedang dikonfigurasi. User ID Telegram bukan Channel ID Discord. Bila sedang konfigurasi Discord dan yang ditampilkan hanya user ID, pilih **No** kecuali kamu memang memiliki Channel ID Discord yang sesuai.
+
+Setelah selesai, jalankan:
 
 ~~~bash
 hermes doctor
 hermes gateway status
+hermes status
 ~~~
 
-Pastikan setup berhasil sebelum menguji bot. Coba chat Hermes secara normal di CLI terlebih dahulu untuk memastikan model dan provider bekerja. Setelah wizard membuat konfigurasi di /opt/data, restart service Railway satu kali. Karena container awalnya mungkin menyala sebelum konfigurasi ada, restart memastikan entrypoint membaca konfigurasi dan memulai Gateway otomatis. Dengan HERMES_AUTOSTART=true, jangan jalankan Gateway kedua secara manual pada service yang sama.
+Lalu restart service Railway satu kali agar entrypoint membaca config yang baru dibuat dan memulai Gateway otomatis. Dengan `HERMES_AUTOSTART=true`, jangan menjalankan Gateway kedua secara manual pada service yang sama. Jika `hermes status` menunjukkan Gateway stopped, lanjutkan ke bagian Troubleshooting di bawah.
 
 ## 4. Telegram — dari nol sampai tes pesan
 
@@ -102,16 +130,24 @@ Jangan menyalin teks placeholder KODE_PAIRING_DARI_BOT secara literal; ganti den
 
 ## 5. Discord — dari Developer Portal sampai tes pesan
 
-1. Buka https://discord.com/developers/applications dan buat application.
-2. Buka tab Bot, buat bot bila diminta, lalu salin token bot. Perlakukan token ini seperti password.
-3. Pada pengaturan Bot, aktifkan **Message Content Intent** (wajib agar Discord dapat mengirim teks pesan ke Gateway). Karena panduan ini memakai allowlist berupa user ID numerik, **Server Members Intent** tidak biasanya diperlukan; aktifkan juga intent itu hanya jika kamu memilih allowlist berbasis username atau role.
-4. Buka OAuth2 → URL Generator. Pilih scope bot dan applications.commands. Pilih permission minimum yang diperlukan, setidaknya View Channels, Send Messages, Read Message History, serta Attach Files/Embed Links bila dibutuhkan. Gunakan URL yang dibuat untuk mengundang bot ke server.
-5. Aktifkan Developer Mode pada Discord client. Salin user ID numerik milikmu bila diperlukan untuk allowlist.
-6. Dari terminal Railway, jalankan hermes gateway setup. Pilih Discord, masukkan token bot dan izinkan user ID milikmu bila diminta.
-7. Restart service Railway setelah wizard selesai.
-8. Tes terlebih dahulu lewat DM ke bot. Di channel server, perilaku default biasanya mensyaratkan @mention bot kecuali channel free-response sudah dikonfigurasi.
+Ikuti semua langkah ini; bot yang sudah online tetap bisa mengabaikan pesan jika akses pengguna atau intent belum benar.
 
-Pastikan bot memiliki izin melihat channel yang diuji dan mengirim pesan ke sana. Menambahkan bot ke server saja tidak otomatis memberi akses ke setiap channel. Gunakan pairing atau allowlist user yang tepat; jangan aktifkan allow-all untuk bot publik.
+1. Buka https://discord.com/developers/applications, buat application, masuk tab **Bot**, lalu salin token bot secara rahasia.
+2. Pada **Bot → Privileged Gateway Intents**, aktifkan **Message Content Intent** dan simpan. Hermes memerlukan intent ini untuk membaca isi pesan. Aktifkan **Server Members Intent** juga bila menggunakan allowlist berbasis username atau role; jika muncul `PrivilegedIntentsRequired`, periksa kedua intent tersebut.
+3. Pada **OAuth2 → URL Generator**, centang scope `bot` dan `applications.commands`. Berikan permission seperlunya, minimal View Channels, Send Messages, dan Read Message History. Buka URL yang dihasilkan untuk mengundang bot ke server yang benar.
+4. Aktifkan **Developer Mode** di Discord (User Settings → Advanced). Gunakan **Copy User ID** untuk memperoleh user ID Discord numerik milikmu. Jangan memasukkan username/nickname sebagai pengganti ID numerik jika wizard meminta ID.
+5. Dari terminal Railway, jalankan `hermes gateway setup`, pilih Discord, masukkan token yang benar, dan bila ditanya **“Allow yourself (...) to talk to the bot?”**, jawab **Yes** untuk akun Discord milikmu.
+6. Pastikan konfigurasi akses mengizinkan user-mu. Untuk pemakaian privat, izinkan ID numerik milikmu melalui wizard. Jika muncul `No Discord access policy configured` atau `User not allowed`, lihat langkah diagnosis pada bagian Troubleshooting; jangan mengaktifkan akses semua pengguna untuk bot publik.
+7. Pastikan bot sudah diundang dan memiliki izin melihat channel yang diuji. Tes pertama lewat DM: buka profil bot, klik Message, lalu kirim pesan biasa.
+
+### Aturan balasan Discord
+
+- **DM:** secara default Hermes merespons pesan langsung tanpa perlu mention.
+- **Channel server:** secara default Hermes hanya merespons ketika kamu menyebut `@DURIAN HERMES` (atau nama bot yang kamu pilih). Pesan biasa tanpa mention akan diabaikan.
+- Bot yang diundang ke server belum tentu memiliki izin untuk melihat setiap channel. Periksa pengaturan permission channel dan role bot.
+- Token bot dan user ID adalah dua hal berbeda. Token mengautentikasi bot; `DISCORD_ALLOWED_USERS` mengizinkan akun pengguna untuk berinteraksi dengannya.
+
+Jika Telegram sudah berfungsi tetapi Discord tidak, jangan ubah provider/model atau konfigurasi Telegram. Fokus periksa Discord token, intents, allowlist, izin channel, dan aturan mention.
 
 ## 6. Penyimpanan dan auto-start
 
@@ -137,29 +173,47 @@ Tambahkan hanya baris channel yang benar-benar digunakan. Variabel token yang di
 
 ## 8. Troubleshooting
 
-**Build gagal pada installer Hermes atau dependency Telegram/Discord**  
-Periksa Build Logs. Build membutuhkan akses jaringan ke installer Hermes, repository paket OS, package index, dan release ttyd. CI membantu menemukan regresi build, tetapi kegagalan upstream sementara tetap bisa terjadi. Jalankan ulang deployment setelah penyebab upstream atau network pulih.
+Mulailah dari pemeriksaan ini:
 
-**Terminal menolak login atau service restart terus**  
-Pastikan TERMINAL_USER dan TERMINAL_PASSWORD ada di Variables; password minimal 16 karakter. Lihat Deploy Logs untuk pesan validasi variable.
+~~~bash
+hermes doctor
+hermes status
+hermes gateway status
+ls -lah /opt/data/logs
+grep -Ei 'discord|access policy|user not allowed|intent|error|traceback' /opt/data/logs/*.log | tail -n 80
+~~~
 
-**hermes: command not found**  
-Pastikan build image baru benar-benar selesai dan periksa hasil command -v hermes. Jangan menjalankan installer manual berulang kali di setiap startup; instalasi CLI dipanggang ke image saat build.
+Jika perintah `grep` menyebut file log yang tidak ditemukan, gunakan nama file yang benar dari hasil `ls`. Jangan membagikan token bot, API key, atau seluruh file `.env`.
 
-**Bot online tetapi tidak membalas**  
-Jalankan hermes doctor dan hermes gateway status. Periksa Deploy Logs dan log di /opt/data/logs. Pastikan chat CLI biasa berhasil, token tidak kedaluwarsa, user ID benar, dan pairing/allowlist sudah mengizinkan akunmu.
+**Model/provider tidak merespons**  
+Pastikan `hermes status` menunjukkan model yang dimaksud dan periksa bagian API Connectivity dari `hermes doctor`. Provider login lain yang tidak digunakan bisa saja menunjukkan `not logged in`; fokus pada provider yang dipilih. Jangan menaruh placeholder API key di konfigurasi.
+
+**Bot online tetapi tidak membalas di Discord**  
+Periksa berurutan: (1) **Message Content Intent** aktif di Developer Portal; (2) user ID numerik milikmu diizinkan; (3) bot punya View Channel, Send Messages, dan Read Message History; (4) untuk channel server, kirim pesan dengan `@mention`; (5) coba DM sebagai tes awal.
+
+**Log menampilkan `No Discord access policy configured` atau `User not allowed`**  
+Discord dapat tersambung tetapi menolak pesan masuk jika tidak ada kebijakan akses yang mengizinkan user. Jalankan ulang `hermes gateway setup` untuk memperbaiki otorisasi melalui wizard, atau periksa `DISCORD_ALLOWED_USERS` di `/opt/data/.env` jika kamu memang mengelola variabel secara manual. Isinya harus berupa user ID Discord numerik yang benar. Jangan menimpa file `.env` secara keseluruhan, karena file itu juga dapat berisi kredensial provider dan bot.
+
+**Log menampilkan `PrivilegedIntentsRequired` atau bot langsung offline**  
+Buka Developer Portal → Application → Bot → Privileged Gateway Intents. Aktifkan **Message Content Intent**; aktifkan juga **Server Members Intent** bila menggunakan username/role allowlist atau bila error meminta intent tersebut. Simpan pengaturan, kemudian restart service Railway.
+
+**Bot tidak membalas pesan biasa di channel server**  
+Coba sebut bot secara eksplisit, misalnya `@DURIAN HERMES halo`. Ini perilaku default. DM tidak memerlukan mention.
 
 **Telegram tidak merespons**  
-Pastikan token dari BotFather benar, user sudah diizinkan, dan tidak ada Gateway lain yang menjalankan token yang sama.
+Pastikan token BotFather benar, akun telah diizinkan/pairing selesai, dan tidak ada Gateway lain yang menggunakan token Telegram yang sama.
 
-**Discord tidak merespons**  
-Pastikan Message Content Intent aktif, token benar, bot sudah diundang ke server, bot punya akses channel, dan user diizinkan. Untuk pesan server biasa, coba @mention bot; DM adalah tes awal yang lebih sederhana.
+**Gateway berstatus stopped atau tidak otomatis hidup**  
+Pastikan Volume dipasang pada `/opt/data`, `/opt/data/config.yaml` sudah dibuat oleh wizard, dan `HERMES_AUTOSTART=true`. Restart service Railway setelah konfigurasi pertama dibuat. Jangan menjalankan Gateway kedua secara manual bila supervisor otomatis sudah aktif.
 
-**Gateway belum otomatis hidup**  
-Pastikan file konfigurasi dibuat oleh wizard, HERMES_AUTOSTART=true, Volume /opt/data terpasang, lalu restart service.
+**`hermes: command not found` atau build gagal**  
+Periksa Build Logs, pastikan deployment memakai commit terbaru, dan jalankan `command -v hermes` dari terminal. Installer dan adapter Telegram/Discord sudah dipasang saat image dibuat; jangan instal ulang pada setiap startup.
+
+**Terminal menolak login atau service restart terus**  
+Pastikan `TERMINAL_USER` dan `TERMINAL_PASSWORD` ada di Variables; password minimal 16 karakter, disarankan 24 karakter atau lebih. Periksa Deploy Logs untuk pesan validasi.
 
 **Konfigurasi hilang setelah redeploy**  
-Pasang Volume di /opt/data dan ulangi setup jika konfigurasi lama sudah hilang. Menambahkan Volume hanya di /data tidak melindungi konfigurasi Hermes.
+Pasang Railway Volume di `/opt/data` sebelum menjalankan wizard pertama kali. Volume yang hanya dipasang di `/data` tidak melindungi konfigurasi Hermes.
 
 ## 9. Keamanan
 
