@@ -104,7 +104,7 @@ Jangan menyalin teks placeholder KODE_PAIRING_DARI_BOT secara literal; ganti den
 
 1. Buka https://discord.com/developers/applications dan buat application.
 2. Buka tab Bot, buat bot bila diminta, lalu salin token bot. Perlakukan token ini seperti password.
-3. Pada pengaturan Bot, aktifkan **Message Content Intent**. Tanpa intent ini, pesan server biasa mungkin tidak terbaca.
+3. Pada pengaturan Bot, aktifkan **Message Content Intent** (wajib agar Discord dapat mengirim teks pesan ke Gateway). Karena panduan ini memakai allowlist berupa user ID numerik, **Server Members Intent** tidak biasanya diperlukan; aktifkan juga intent itu hanya jika kamu memilih allowlist berbasis username atau role.
 4. Buka OAuth2 → URL Generator. Pilih scope bot dan applications.commands. Pilih permission minimum yang diperlukan, setidaknya View Channels, Send Messages, Read Message History, serta Attach Files/Embed Links bila dibutuhkan. Gunakan URL yang dibuat untuk mengundang bot ke server.
 5. Aktifkan Developer Mode pada Discord client. Salin user ID numerik milikmu bila diperlukan untuk allowlist.
 6. Dari terminal Railway, jalankan hermes gateway setup. Pilih Discord, masukkan token bot dan izinkan user ID milikmu bila diminta.
