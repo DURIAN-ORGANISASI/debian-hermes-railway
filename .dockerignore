@@ -1,0 +1,10 @@
+.git
+.github
+.env
+.env.*
+!.env.example
+*.log
+*.zip
+.DS_Store
+__pycache__
+.pytest_cache
