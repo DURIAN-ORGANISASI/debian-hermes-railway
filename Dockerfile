@@ -50,7 +50,10 @@ RUN set -eux; \
     command -v hermes
 
 # Prepare Telegram and Discord adapter dependencies during build.
-RUN set -eux; hermes pm install --extra telegram --extra discord
+RUN set -eux; \
+    hermes pm install --extra messaging --extra telegram --extra discord; \
+    hermes --version; \
+    hermes pm doctor
 
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 COPY system-banner.sh /etc/profile.d/00-system-banner.sh
