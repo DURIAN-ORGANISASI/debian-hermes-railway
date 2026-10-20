@@ -35,7 +35,6 @@ jobs:
         run: |
           set -euo pipefail
           cleanup() {
-            docker logs hermes-railway-smoke-test 2>/dev/null || true
             docker rm --force hermes-railway-smoke-test >/dev/null 2>&1 || true
           }
           trap cleanup EXIT
