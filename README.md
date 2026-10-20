@@ -108,7 +108,7 @@ hermes gateway status
 hermes status
 ~~~
 
-Lalu restart service Railway satu kali agar entrypoint membaca config yang baru dibuat dan memulai Gateway otomatis. Dengan `HERMES_AUTOSTART=true`, jangan menjalankan Gateway kedua secara manual pada service yang sama. Jika `hermes status` menunjukkan Gateway stopped, lanjutkan ke bagian Troubleshooting di bawah.
+Lalu restart/redeploy service Railway satu kali agar entrypoint membaca config yang baru dibuat dan memulai Gateway otomatis. **Jangan menjalankan `hermes gateway` di terminal browser sebagai metode permanen.** Perintah itu berjalan di foreground dan dapat berhenti ketika sesi terminal ditutup. Dengan `HERMES_AUTOSTART=true`, entrypoint repo ini yang seharusnya menjalankan Gateway terpisah dari sesi `ttyd`; setelah restart kamu boleh menutup tab terminal. Jangan menjalankan Gateway kedua secara manual pada service yang sama. Jika `hermes status` menunjukkan Gateway stopped, lanjutkan ke bagian Troubleshooting di bawah.
 
 ## 4. Telegram — dari nol sampai tes pesan
 
@@ -172,6 +172,10 @@ DISCORD_ALLOWED_USERS=ID_USER_DISCORD_NUMERIK_MILIKMU
 Tambahkan hanya baris channel yang benar-benar digunakan. Variabel token yang ditetapkan di Railway dapat mengungguli nilai dari file .env Hermes. Jadi jangan menetapkan token lama atau placeholder di Railway jika sudah mengisi token yang benar melalui wizard. Jangan commit token ke GitHub.
 
 ## 8. Troubleshooting
+
+**Gateway mati saat terminal ditutup / Gateway berstatus stopped**  
+Jangan mengandalkan perintah `hermes gateway` yang dijalankan di shell interaktif karena perintah itu berjalan di foreground. Pastikan `HERMES_AUTOSTART=true`, file `/opt/data/config.yaml` sudah ada, dan Railway Volume benar-benar dipasang pada `/opt/data`. Setelah wizard selesai, lakukan **Redeploy** service dari commit terbaru repo, tunggu deployment berstatus SUCCESS, lalu buka **Deploy Logs** (bukan tab terminal browser). Cari log `Hermes config found; starting Gateway supervisor.` dan `Starting Hermes Gateway...`. Tutup tab terminal dan tes bot lagi. Jika pesan supervisor tidak muncul, deployment belum memakai entrypoint terbaru, `HERMES_AUTOSTART` tidak bernilai `true`, atau konfigurasi belum berada di `/opt/data`. Jangan jalankan Gateway ganda memakai token yang sama.
+
 
 Mulailah dari pemeriksaan ini:
 
