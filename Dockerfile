@@ -14,7 +14,7 @@ ENV TZ=Asia/Jakarta \
     HERMES_AUTOSTART=true
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    bash ca-certificates curl coreutils procps sed git \
+    bash ca-certificates curl coreutils procps sed git tar libatomic1 \
     python3 python3-venv python3-pip \
     build-essential pkg-config libffi-dev libssl-dev xz-utils tzdata \
     && (apt-get install -y --no-install-recommends fastfetch || true) \
@@ -57,6 +57,7 @@ COPY system-banner.sh /etc/profile.d/00-system-banner.sh
 COPY start-hermes /usr/local/bin/start-hermes
 
 RUN chmod 0755 /usr/local/bin/entrypoint.sh /usr/local/bin/start-hermes /etc/profile.d/00-system-banner.sh \
+    && bash -n /usr/local/bin/entrypoint.sh /usr/local/bin/start-hermes /etc/profile.d/00-system-banner.sh \
     && mkdir -p /data /opt/data /usr/local/share/hermes-tools \
     && chmod 0777 /data \
     && chmod 0755 /opt/data /usr/local/share/hermes-tools
