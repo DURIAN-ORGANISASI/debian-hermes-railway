@@ -110,6 +110,39 @@ hermes status
 
 Lalu restart/redeploy service Railway satu kali agar entrypoint membaca config yang baru dibuat dan memulai Gateway otomatis. **Jangan menjalankan `hermes gateway` di terminal browser sebagai metode permanen.** Perintah itu berjalan di foreground dan dapat berhenti ketika sesi terminal ditutup. Dengan `HERMES_AUTOSTART=true`, entrypoint repo ini yang seharusnya menjalankan Gateway terpisah dari sesi `ttyd`; setelah restart kamu boleh menutup tab terminal. Jangan menjalankan Gateway kedua secara manual pada service yang sama. Jika `hermes status` menunjukkan Gateway stopped, lanjutkan ke bagian Troubleshooting di bawah.
 
+### Pengaturan streaming dan diagnosis respons lambat
+
+Streaming menentukan apakah jawaban ditampilkan bertahap; streaming **tidak** mempercepat model/provider yang lambat mengirim token pertama. Jika ingin Telegram menampilkan jawaban secara bertahap, periksa dan atur nilai berikut:
+
+~~~bash
+hermes config set streaming.enabled true
+hermes config set display.platforms.telegram.streaming true
+hermes config get streaming.enabled
+hermes config get display.platforms.telegram.streaming
+hermes config get display.platforms.discord.streaming
+~~~
+
+Nilai true, true, false berarti streaming global aktif, streaming Telegram aktif, dan Discord tetap mengirim jawaban utuh. Jika ingin streaming juga di Discord, ubah pengaturan Discord secara eksplisit. Setelah mengubah konfigurasi yang dibaca oleh Gateway, restart service Railway agar Gateway memuat konfigurasi baru.
+
+Jika Telegram terus menampilkan indikator mengetik atau log memperlihatkan pesan **waiting for stream response (..., first_chunk)**, periksa dulu model yang dipilih. Untuk menguji respons model dari terminal dengan satu permintaan:
+
+~~~bash
+hermes -c "Balas hanya: OK"
+~~~
+
+Atau jalankan perintah hermes, lalu ketik Balas hanya: OK pada prompt chat yang muncul. **Jangan** mengetik perintah hermes diikuti Balas hanya: OK sebagai argumen biasa; CLI dapat menganggap kata pertama sebagai nama subcommand.
+
+- Jika tes CLI juga lambat, masalah lebih mungkin berada pada model/provider atau tingkat reasoning. Coba model lain yang terbukti merespons lebih cepat lewat perintah hermes model, atau turunkan tingkat reasoning jika model mendukung pengaturannya.
+- Jika tes CLI cepat tetapi Telegram lambat, periksa model aktif lewat hermes status dan log Gateway. Pastikan Gateway memakai konfigurasi model yang sama dan periksa error/timeout.
+- Pengaturan reasoning opsional untuk model yang mendukungnya:
+
+~~~bash
+hermes config set agent.reasoning_effort low
+hermes config get agent.reasoning_effort
+~~~
+
+Nilai low dapat mengurangi waktu berpikir pada model yang menghormati parameter tersebut, dengan kemungkinan trade-off pada kedalaman jawaban. Pengaturan ini bukan jaminan latensi dan tidak menggantikan pengujian model. Jangan mengganti model default dalam tutorial secara paksa; pilih model yang paling sesuai dengan kebutuhan dan hasil tesmu.
+
 ## 4. Telegram — dari nol sampai tes pesan
 
 1. Buka Telegram dan chat dengan @BotFather.
@@ -173,51 +206,65 @@ Tambahkan hanya baris channel yang benar-benar digunakan. Variabel token yang di
 
 ## 8. Troubleshooting
 
-**Gateway mati saat terminal ditutup / Gateway berstatus stopped**  
-Jangan mengandalkan perintah `hermes gateway` yang dijalankan di shell interaktif karena perintah itu berjalan di foreground. Pastikan `HERMES_AUTOSTART=true`, file `/opt/data/config.yaml` sudah ada, dan Railway Volume benar-benar dipasang pada `/opt/data`. Setelah wizard selesai, lakukan **Redeploy** service dari commit terbaru repo, tunggu deployment berstatus SUCCESS, lalu buka **Deploy Logs** (bukan tab terminal browser). Cari log `Hermes config found; starting Gateway supervisor.` dan `Starting Hermes Gateway...`. Tutup tab terminal dan tes bot lagi. Jika pesan supervisor tidak muncul, deployment belum memakai entrypoint terbaru, `HERMES_AUTOSTART` tidak bernilai `true`, atau konfigurasi belum berada di `/opt/data`. Jangan jalankan Gateway ganda memakai token yang sama.
-
-
-Mulailah dari pemeriksaan ini:
+**Model lambat / Telegram terus mengetik sebelum jawaban muncul**  
+Jika muncul pesan seperti **waiting for stream response (150s, first_chunk)**, Gateway belum menerima chunk jawaban pertama tepat waktu. Ini berbeda dari sekadar animasi mengetik. Tes model dengan perintah satu-shot berikut atau jalankan Hermes interaktif lalu ketik pesan pada prompt chat:
 
 ~~~bash
-hermes doctor
-hermes status
-hermes gateway status
-ls -lah /opt/data/logs
-grep -Ei 'discord|access policy|user not allowed|intent|error|traceback' /opt/data/logs/*.log | tail -n 80
+hermes -c "Balas hanya: OK"
 ~~~
 
-Jika perintah `grep` menyebut file log yang tidak ditemukan, gunakan nama file yang benar dari hasil `ls`. Jangan membagikan token bot, API key, atau seluruh file `.env`.
+Jangan mengetik perintah Hermes diikuti Balas hanya: OK sebagai argumen biasa, sebab itu dapat dibaca sebagai nama subcommand. Jika CLI dan Telegram sama-sama lambat, coba model yang lebih cepat melalui hermes model; jika model mendukung reasoning control, uji pengaturan agent.reasoning_effort ke low. Jika CLI cepat tetapi Telegram lambat, periksa model aktif, konfigurasi Gateway, dan log berikut:
 
-**Model/provider tidak merespons**  
-Pastikan `hermes status` menunjukkan model yang dimaksud dan periksa bagian API Connectivity dari `hermes doctor`. Provider login lain yang tidak digunakan bisa saja menunjukkan `not logged in`; fokus pada provider yang dipilih. Jangan menaruh placeholder API key di konfigurasi.
+~~~bash
+hermes status
+hermes gateway status
+grep -Ei 'first_chunk|no chunks|timeout|stream|nvidia|telegram|error|exception' /opt/data/logs/*.log | tail -n 100
+~~~
+
+Jangan menganggap streaming.enabled=true akan memperbaiki waktu token pertama. Streaming mengubah cara jawaban ditampilkan; kecepatan awal tetap bergantung pada model/provider, reasoning, jaringan, dan Gateway.
+
+**Atur streaming Telegram**  
+Untuk jawaban progresif, gunakan:
+
+~~~bash
+hermes config set streaming.enabled true
+hermes config set display.platforms.telegram.streaming true
+hermes config get streaming.enabled
+hermes config get display.platforms.telegram.streaming
+hermes config get display.platforms.discord.streaming
+~~~
+
+Streaming global harus aktif agar opsi streaming per-platform bekerja. Nilai true / true / false berarti global aktif, Telegram streaming, Discord jawaban utuh. Setelah perubahan, restart service Railway. Perubahan ini tidak otomatis membuat model lebih cepat.
+
+**Gateway mati saat terminal ditutup / Gateway berstatus stopped**  
+Jangan mengandalkan perintah hermes gateway yang dijalankan di shell interaktif karena perintah itu berjalan di foreground. Pastikan HERMES_AUTOSTART=true, file /opt/data/config.yaml sudah ada, dan Railway Volume terpasang pada /opt/data. Setelah wizard selesai, lakukan Redeploy service dari commit terbaru, lalu buka Deploy Logs dan cari pesan **Hermes config found; starting Gateway supervisor.** serta **Starting Hermes Gateway...**. Tutup tab terminal dan tes bot lagi. Bila log menyebut Gateway sedang berjalan manual, itu hanya menjelaskan proses tersebut tidak dipasang sebagai system service; di container ini, entrypoint Railway seharusnya yang mengelola auto-start. Jangan menjalankan Gateway ganda dengan token yang sama.
 
 **Bot online tetapi tidak membalas di Discord**  
-Periksa berurutan: (1) **Message Content Intent** aktif di Developer Portal; (2) user ID numerik milikmu diizinkan; (3) bot punya View Channel, Send Messages, dan Read Message History; (4) untuk channel server, kirim pesan dengan `@mention`; (5) coba DM sebagai tes awal.
+Periksa berurutan: (1) **Message Content Intent** aktif di Developer Portal; (2) user ID numerik milikmu diizinkan; (3) bot punya View Channel, Send Messages, dan Read Message History; (4) untuk channel server, kirim pesan dengan mention bot; (5) coba DM sebagai tes awal.
 
-**Log menampilkan `No Discord access policy configured` atau `User not allowed`**  
-Discord dapat tersambung tetapi menolak pesan masuk jika tidak ada kebijakan akses yang mengizinkan user. Jalankan ulang `hermes gateway setup` untuk memperbaiki otorisasi melalui wizard, atau periksa `DISCORD_ALLOWED_USERS` di `/opt/data/.env` jika kamu memang mengelola variabel secara manual. Isinya harus berupa user ID Discord numerik yang benar. Jangan menimpa file `.env` secara keseluruhan, karena file itu juga dapat berisi kredensial provider dan bot.
+**Log menampilkan No Discord access policy configured atau User not allowed**  
+Discord dapat tersambung tetapi menolak pesan masuk jika tidak ada kebijakan akses yang mengizinkan user. Jalankan ulang hermes gateway setup untuk memperbaiki otorisasi melalui wizard, atau periksa DISCORD_ALLOWED_USERS di /opt/data/.env jika mengelola variabel secara manual. Isinya harus berupa user ID Discord numerik yang benar. Jangan menimpa file .env secara keseluruhan, karena file itu juga dapat berisi kredensial provider dan bot.
 
-**Log menampilkan `PrivilegedIntentsRequired` atau bot langsung offline**  
+**Log menampilkan PrivilegedIntentsRequired atau bot langsung offline**  
 Buka Developer Portal → Application → Bot → Privileged Gateway Intents. Aktifkan **Message Content Intent**; aktifkan juga **Server Members Intent** bila menggunakan username/role allowlist atau bila error meminta intent tersebut. Simpan pengaturan, kemudian restart service Railway.
 
 **Bot tidak membalas pesan biasa di channel server**  
-Coba sebut bot secara eksplisit, misalnya `@DURIAN HERMES halo`. Ini perilaku default. DM tidak memerlukan mention.
+Coba sebut bot secara eksplisit, misalnya @DURIAN HERMES halo. Ini perilaku default. DM tidak memerlukan mention.
 
-**Telegram tidak merespons**  
-Pastikan token BotFather benar, akun telah diizinkan/pairing selesai, dan tidak ada Gateway lain yang menggunakan token Telegram yang sama.
+**Telegram tidak merespons sama sekali**  
+Pastikan token BotFather benar, akun telah diizinkan/pairing selesai, dan tidak ada Gateway lain yang menggunakan token Telegram yang sama. Periksa juga hermes gateway status dan log Gateway.
 
-**Gateway berstatus stopped atau tidak otomatis hidup**  
-Pastikan Volume dipasang pada `/opt/data`, `/opt/data/config.yaml` sudah dibuat oleh wizard, dan `HERMES_AUTOSTART=true`. Restart service Railway setelah konfigurasi pertama dibuat. Jangan menjalankan Gateway kedua secara manual bila supervisor otomatis sudah aktif.
+**hermes doctor menunjukkan provider lain tidak login**  
+Peringatan provider yang tidak dipilih tidak otomatis berarti model utama gagal. Periksa nilai Model/Provider di hermes status dan bagian API Connectivity pada hermes doctor.
 
-**`hermes: command not found` atau build gagal**  
-Periksa Build Logs, pastikan deployment memakai commit terbaru, dan jalankan `command -v hermes` dari terminal. Installer dan adapter Telegram/Discord sudah dipasang saat image dibuat; jangan instal ulang pada setiap startup.
+**hermes: command not found atau build gagal**  
+Periksa Build Logs, pastikan deployment memakai commit terbaru, dan jalankan command -v hermes dari terminal. Installer serta adapter Telegram/Discord dipasang saat image dibuat; jangan instal ulang pada setiap startup.
 
 **Terminal menolak login atau service restart terus**  
-Pastikan `TERMINAL_USER` dan `TERMINAL_PASSWORD` ada di Variables; password minimal 16 karakter, disarankan 24 karakter atau lebih. Periksa Deploy Logs untuk pesan validasi.
+Pastikan TERMINAL_USER dan TERMINAL_PASSWORD ada di Variables; password minimal 16 karakter, disarankan 24 karakter atau lebih. Periksa Deploy Logs untuk pesan validasi.
 
 **Konfigurasi hilang setelah redeploy**  
-Pasang Railway Volume di `/opt/data` sebelum menjalankan wizard pertama kali. Volume yang hanya dipasang di `/data` tidak melindungi konfigurasi Hermes.
+Pasang Railway Volume di /opt/data sebelum menjalankan wizard pertama kali. Volume yang hanya dipasang di /data tidak melindungi konfigurasi Hermes.
 
 ## 9. Keamanan
 
