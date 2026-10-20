@@ -6,7 +6,7 @@ Repository ini menjalankan terminal web yang dilindungi password dan Hermes Agen
 
 - Base image Debian 13 (Trixie) slim.
 - Hermes Agent CLI dipasang pada saat Docker build menggunakan installer resmi Hermes.
-- Dependency Telegram dan Discord diminta pada proses build supaya kegagalan dependency muncul di Build Logs, bukan baru saat Gateway berjalan.
+- Extra messaging bersama serta extra khusus Telegram dan Discord dipasang dan diperiksa saat Docker build agar kegagalan dependency muncul di Build Logs, bukan baru saat Gateway berjalan.
 - Terminal browser menggunakan ttyd dengan autentikasi username/password dan pemeriksaan Origin.
 - Banner sistem otomatis menampilkan OS, kernel, arsitektur, uptime, CPU, RAM, disk, timezone, dan status Gateway.
 - Git, curl, Python, pip/venv, compiler, dan pustaka build tersedia.
