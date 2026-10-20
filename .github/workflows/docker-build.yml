@@ -1,0 +1,81 @@
+name: Docker build and terminal smoke test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check shell syntax
+        run: |
+          set -euo pipefail
+          bash -n entrypoint.sh
+          bash -n start-hermes
+          bash -n system-banner.sh
+
+      - name: Build container
+        run: docker build --pull --tag hermes-railway-smoke-test .
+
+      - name: Start terminal and verify authentication
+        env:
+          TEST_TERMINAL_USER: ci_tester
+          TEST_TERMINAL_PASSWORD: ci-only-Password-42-not-a-real-secret
+        run: |
+          set -euo pipefail
+          cleanup() {
+            docker logs hermes-railway-smoke-test 2>/dev/null || true
+            docker rm --force hermes-railway-smoke-test >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          docker run --detach \
+            --name hermes-railway-smoke-test \
+            --publish 127.0.0.1:18080:8080 \
+            --env TERMINAL_USER="$TEST_TERMINAL_USER" \
+            --env TERMINAL_PASSWORD="$TEST_TERMINAL_PASSWORD" \
+            --env HERMES_AUTOSTART=false \
+            hermes-railway-smoke-test
+
+          authorized_code=""
+          for attempt in $(seq 1 45); do
+            authorized_code="$(curl --silent --show-error \
+              --output /tmp/ttyd-authorized.html \
+              --write-out '%{http_code}' \
+              --user "$TEST_TERMINAL_USER:$TEST_TERMINAL_PASSWORD" \
+              http://127.0.0.1:18080/ || true)"
+            if [ "$authorized_code" = "200" ]; then
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$authorized_code" != "200" ]; then
+            echo "FAIL: authenticated terminal did not return HTTP 200 (last status: $authorized_code)."
+            exit 1
+          fi
+          grep -qi "ttyd" /tmp/ttyd-authorized.html
+
+          unauthorized_code="$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:18080/ || true)"
+          if [ "$unauthorized_code" != "401" ]; then
+            echo "FAIL: terminal must reject unauthenticated requests (received HTTP $unauthorized_code)."
+            exit 1
+          fi
+
+          if docker logs hermes-railway-smoke-test 2>&1 | grep -F -- "$TEST_TERMINAL_PASSWORD"; then
+            echo "FAIL: terminal password appeared in container logs."
+            exit 1
+          fi
+
+          echo "PASS: image built, terminal served HTTP 200 with credentials, unauthenticated requests were rejected, and the password was not logged."
