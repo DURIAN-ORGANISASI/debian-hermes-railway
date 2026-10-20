@@ -18,6 +18,16 @@ HERMES_HOME="${HERMES_HOME:-/opt/data}"
 HERMES_RUNTIME_DIR="${HERMES_RUNTIME_DIR:-/usr/local/share/hermes-tools}"
 UV_CACHE_DIR="${UV_CACHE_DIR:-/tmp/uv-cache}"
 export HERMES_HOME HERMES_RUNTIME_DIR UV_CACHE_DIR
+
+# Rebuildable tool state must stay outside the persistent Hermes data volume.
+if [[ "${HERMES_RUNTIME_DIR}" == "${HERMES_HOME}" || "${HERMES_RUNTIME_DIR}" == "${HERMES_HOME}/"* || "${HERMES_HOME}" == "${HERMES_RUNTIME_DIR}/"* ]]; then
+  echo "ERROR: HERMES_HOME and HERMES_RUNTIME_DIR must be separate, non-overlapping paths." >&2
+  exit 1
+fi
+if [[ ! "${PORT}" =~ ^[0-9]+$ ]] || (( PORT < 1 || PORT > 65535 )); then
+  echo "ERROR: PORT must be a TCP port number from 1 to 65535." >&2
+  exit 1
+fi
 mkdir -p "${HERMES_HOME}" "${HERMES_RUNTIME_DIR}" "${UV_CACHE_DIR}" /data
 
 # Keep large, re-downloadable Hermes tool payloads and partial downloads off
@@ -114,8 +124,8 @@ if [[ "${HERMES_AUTOSTART:-true}" == "true" || "${HERMES_AUTOSTART:-true}" == "1
       while true; do
         echo "Starting Hermes Gateway..."
         hermes gateway run || true
-        echo "Hermes Gateway exited; retrying in 5 seconds."
-        sleep 5
+        echo "Hermes Gateway exited; retrying in 15 seconds."
+        sleep 15
       done
     ) &
   else
@@ -125,4 +135,4 @@ if [[ "${HERMES_AUTOSTART:-true}" == "true" || "${HERMES_AUTOSTART:-true}" == "1
 fi
 
 echo "Starting authenticated Debian + Hermes terminal on port ${PORT}."
-exec /usr/local/bin/ttyd --port "${PORT}" --credential "${TERMINAL_USER}:${TERMINAL_PASSWORD}" --writable --cwd /data bash --login
+exec /usr/local/bin/ttyd --check-origin --port "${PORT}" --credential "${TERMINAL_USER}:${TERMINAL_PASSWORD}" --writable --cwd /data bash --login
