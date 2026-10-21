@@ -1,6 +1,52 @@
-# Debian 13 Trixie + Hermes Agent untuk Railway
+<div align="center">
 
-Repository ini menjalankan terminal web yang dilindungi password dan Hermes Agent CLI di Railway. Image ini bukan VPS penuh atau desktop GUI. Gunakan Railway Volume untuk menyimpan konfigurasi Hermes dan riwayat yang perlu bertahan setelah redeploy.
+<a href="https://www.debian.org/"><img src="https://www.debian.org/logos/openlogo-nd.svg" alt="Logo resmi Debian open-use" width="84" height="84"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href="https://github.com/NousResearch/hermes-agent"><img src="https://raw.githubusercontent.com/NousResearch/hermes-agent/main/website/static/img/favicon.svg" alt="Logo resmi Hermes Agent dari NousResearch" width="84" height="84"></a>
+
+# Debian + Hermes Agent Railway
+
+<p>
+  <a href="https://github.com/DURIAN-ORGANISASI/debian-hermes-railway/actions/workflows/docker-build.yml"><img alt="Quality checks" src="https://img.shields.io/github/actions/workflow/status/DURIAN-ORGANISASI/debian-hermes-railway/docker-build.yml?branch=main&amp;label=quality%20checks&amp;logo=githubactions&amp;logoColor=white"></a>
+  <img src="https://img.shields.io/badge/Debian-13%20Trixie-A80030?style=flat&amp;logo=debian&amp;logoColor=white" alt="Debian 13 Trixie">
+  <img src="https://img.shields.io/badge/Hermes-Agent-CC8B28?style=flat&amp;logo=probot&amp;logoColor=white" alt="Hermes Agent">
+  <img src="https://img.shields.io/badge/Deploy-Railway-0B0D0E?style=flat&amp;logo=railway&amp;logoColor=white" alt="Railway">
+  <img src="https://img.shields.io/badge/Container-Docker-2496ED?style=flat&amp;logo=docker&amp;logoColor=white" alt="Docker">
+  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/github/license/DURIAN-ORGANISASI/debian-hermes-railway?label=license"></a>
+</p>
+
+<p><a href="README.md">🇮🇩 Bahasa Indonesia</a> · <a href="README.en.md">🇬🇧 English</a></p>
+
+<p><strong>Hermes Agent dan terminal Debian 13 di Railway.</strong><br>
+Deploy Hermes CLI, akses shell lewat browser, dan hubungkan channel Telegram/Discord dengan data konfigurasi persisten.</p>
+
+<p>
+  <a href="#fitur">Fitur</a> ·
+  <a href="#arsitektur-singkat">Arsitektur</a> ·
+  <a href="#1-deploy-ke-railway">Panduan deploy</a> ·
+  <a href="#6-penyimpanan-dan-auto-start">Penyimpanan &amp; auto-start</a> ·
+  <a href="#9-keamanan">Keamanan</a> ·
+  <a href="#sumber-atribusi-dan-lisensi">Sumber &amp; lisensi</a> ·
+  <a href="#kontribusi">Kontribusi</a>
+</p>
+
+</div>
+
+---
+
+![Ilustrasi Debian + Hermes Agent Railway](docs/hero.id.svg)
+
+<p align="center"><sub>Ilustrasi vektor orisinal untuk dokumentasi; bukan screenshot produk resmi.</sub></p>
+
+> [!WARNING]
+> **Bukan VPS penuh.** Railway menjalankan container aplikasi, bukan server virtual dengan akses host, desktop GUI, atau jaminan systemd penuh. Terminal web berjalan sebagai root di dalam container. Pasang Railway Volume di `/opt/data` sebelum menjalankan setup Hermes pertama kali agar konfigurasi, sesi, memori, dan log tidak hilang ketika container dibuat ulang.
+
+## Arsitektur singkat
+
+![Diagram arsitektur Debian + Hermes Agent Railway](docs/architecture.svg)
+
+- **Akses terminal:** Browser HTTPS → Railway → `ttyd` → Bash di container Debian 13.
+- **Agent dan channel:** Hermes Gateway berjalan di container dan dapat menghubungkan bot Telegram/Discord setelah konfigurasi selesai.
+- **Data persisten:** Railway Volume dipasang di `/opt/data` untuk konfigurasi dan state Hermes; tool/cache yang dapat dibuat ulang diarahkan ke luar volume.
+- **Auto-start:** Entry point memulai Gateway setelah `/opt/data/config.yaml` tersedia ketika `HERMES_AUTOSTART=true`.
 
 ## Fitur
 
@@ -282,3 +328,47 @@ Pasang Railway Volume di /opt/data sebelum menjalankan wizard pertama kali. Volu
 - Discord setup: https://hermes-agent.nousresearch.com/docs/user-guide/messaging/discord
 - Environment variables: https://hermes-agent.nousresearch.com/docs/reference/environment-variables
 - Upstream Hermes: https://github.com/NousResearch/hermes-agent
+
+
+## Struktur repository
+
+```text
+debian-hermes-railway/
+├── Dockerfile
+├── entrypoint.sh
+├── start-hermes
+├── system-banner.sh
+├── .env.example
+├── LICENSE
+├── README.md
+├── README.en.md
+├── CONTRIBUTING.md
+├── SECURITY.md
+├── docs/
+│   ├── hero.id.svg
+│   ├── hero.en.svg
+│   ├── architecture.svg
+│   ├── architecture.en.svg
+│   └── SOURCES.md
+└── .github/
+    └── workflows/
+        └── docker-build.yml
+```
+
+## Sumber, atribusi, dan lisensi
+
+Daftar komponen upstream, logo, ilustrasi, serta batas lisensi dijelaskan dalam [`docs/SOURCES.md`](docs/SOURCES.md).
+
+- **Repository ini:** materi proyek yang tercakup mengikuti [MIT License](LICENSE).
+- **Debian:** logo yang ditampilkan adalah logo resmi *open-use*. Hak cipta dan ketentuannya mengikuti upstream Debian; penggunaannya tidak menandakan dukungan resmi Debian.
+- **Hermes Agent:** proyek upstream dikelola oleh [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent), dengan lisensi upstream tersendiri.
+- **ttyd, Railway, Docker dan paket Debian:** komponen, layanan, merek, dan lisensinya tetap tunduk pada ketentuan pemilik masing-masing.
+- Ilustrasi `docs/hero.*.svg` dan `docs/architecture*.svg` dibuat khusus untuk dokumentasi repository ini, bukan screenshot resmi atau jaminan kondisi deployment aktif.
+
+## Kontribusi
+
+Issues dan Pull Requests dipersilakan. Baca [`CONTRIBUTING.md`](CONTRIBUTING.md) sebelum mengajukan perubahan. Jangan unggah token Telegram/Discord, API key, password, file konfigurasi sensitif, atau log yang mengandung rahasia.
+
+## Kebijakan keamanan
+
+Untuk melaporkan potensi kerentanan, ikuti [`SECURITY.md`](SECURITY.md). Hindari memublikasikan token bot, kredensial Railway, domain privat, atau isi konfigurasi sensitif. Jika token terlanjur terekspos, cabut dan buat token baru dari portal penyedia terkait.
