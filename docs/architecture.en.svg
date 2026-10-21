@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="450" viewBox="0 0 1200 450" role="img" aria-labelledby="title desc">
+<title id="title">Debian + Hermes Agent Railway architecture</title>
+<desc id="desc">Browser connects to Railway and ttyd; Hermes Agent Gateway communicates with Telegram or Discord, while config and state live on the Volume mounted at /opt/data.</desc>
+<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#151923"/><stop offset="1" stop-color="#29283a"/></linearGradient><linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f6c968"/><stop offset="1" stop-color="#b7791f"/></linearGradient><marker id="arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0 0 L9 3 L0 6Z" fill="#a8b1c2"/></marker></defs>
+<rect width="1200" height="450" rx="26" fill="url(#bg)"/>
+<text x="48" y="48" fill="#fff" font-family="Inter,Segoe UI,sans-serif" font-size="25" font-weight="700">Terminal · Hermes Gateway · persistent state</text>
+<text x="48" y="75" fill="#b4bdce" font-family="Inter,Segoe UI,sans-serif" font-size="15">Railway application container — not a full VPS</text>
+<g font-family="Inter,Segoe UI,sans-serif">
+ <rect x="48" y="132" width="195" height="95" rx="15" fill="#202839" stroke="#626e82" stroke-width="1.5"/>
+ <text x="145" y="169" text-anchor="middle" fill="#fff" font-size="19" font-weight="700">Browser</text><text x="145" y="195" text-anchor="middle" fill="#bac4d5" font-size="14">HTTPS · login</text>
+ <path d="M245 179 H284" stroke="#a8b1c2" stroke-width="2.5" marker-end="url(#arr)"/>
+ <rect x="294" y="112" width="338" height="134" rx="17" fill="#1d2432" stroke="#a80030" stroke-width="2"/>
+ <text x="463" y="143" text-anchor="middle" fill="#fca5b4" font-size="15" font-weight="700">RAILWAY CONTAINER</text>
+ <rect x="316" y="160" width="130" height="62" rx="10" fill="#282f40" stroke="#7c879b"/>
+ <text x="381" y="185" text-anchor="middle" fill="#fff" font-size="16" font-weight="700">ttyd + Bash</text><text x="381" y="205" text-anchor="middle" fill="#bac4d5" font-size="12">web terminal</text>
+ <rect x="463" y="160" width="145" height="62" rx="10" fill="#2e2937" stroke="#c38a33"/>
+ <text x="535" y="185" text-anchor="middle" fill="#f7d98d" font-size="16" font-weight="700">Hermes CLI</text><text x="535" y="205" text-anchor="middle" fill="#bac4d5" font-size="12">Gateway supervisor</text>
+ <path d="M635 179 H676" stroke="#a8b1c2" stroke-width="2.5" marker-end="url(#arr)"/>
+ <rect x="686" y="132" width="202" height="95" rx="15" fill="#202839" stroke="#c38a33" stroke-width="1.5"/>
+ <text x="787" y="169" text-anchor="middle" fill="#f7d98d" font-size="18" font-weight="700">Messaging</text><text x="787" y="195" text-anchor="middle" fill="#bac4d5" font-size="14">Telegram / Discord</text>
+ <path d="M535 246 V293 H788 V244" stroke="#9ca7ba" stroke-width="2.2" stroke-dasharray="6 5" fill="none" marker-end="url(#arr)"/>
+ <text x="648" y="282" text-anchor="middle" fill="#aeb8c8" font-size="12">Gateway API / bot connection</text>
+ <path d="M535 223 V338" stroke="#a8b1c2" stroke-width="2.5" marker-end="url(#arr)"/>
+ <rect x="402" y="348" width="267" height="66" rx="13" fill="#332535" stroke="#e65a77" stroke-width="1.5"/>
+ <text x="535" y="373" text-anchor="middle" fill="#fff" font-size="17" font-weight="700">Railway Volume</text><text x="535" y="396" text-anchor="middle" fill="#f3bac7" font-size="14">/opt/data · config, sessions, memory</text>
+ <rect x="916" y="132" width="236" height="95" rx="15" fill="#1d2634" stroke="#596579" stroke-width="1.5"/>
+ <text x="1034" y="166" text-anchor="middle" fill="#fff" font-size="17" font-weight="700">Rebuildable tools</text><text x="1034" y="192" text-anchor="middle" fill="#bac4d5" font-size="13">/usr/local/share/</text><text x="1034" y="211" text-anchor="middle" fill="#bac4d5" font-size="13">hermes-tools</text>
+ <path d="M632 132 L916 132" stroke="#778398" stroke-width="1.5" stroke-dasharray="5 5"/>
+ <text x="48" y="398" fill="#f1c9d3" font-size="14">Security boundary: terminal login + channel allowlists; secrets must stay out of Git.</text>
+</g>
+</svg>
