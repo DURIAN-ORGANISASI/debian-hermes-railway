@@ -11,7 +11,7 @@ HERMES_HOME="${HERMES_HOME:-/opt/data}"
 HERMES_RUNTIME_DIR="${HERMES_RUNTIME_DIR:-/usr/local/share/hermes-tools}"
 UV_CACHE_DIR="${UV_CACHE_DIR:-/tmp/uv-cache}"
 export TZ="${TZ:-Asia/Jakarta}" HOME=/home/hermes USER=hermes LOGNAME=hermes
-export PATH="/home/hermes/.local/bin:/home/hermes/.local/share/uv/bin:/usr/local/bin:/usr/bin:/bin"
+export PATH="/home/hermes/.local/bin:/home/hermes/.local/share/uv/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 export HERMES_HOME HERMES_RUNTIME_DIR UV_CACHE_DIR
 
 # Fixed paths prevent accidental ownership changes outside the intended data locations.
