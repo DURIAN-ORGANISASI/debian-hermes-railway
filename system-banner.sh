@@ -21,7 +21,7 @@ BASH_LABEL="Bash ${BASH_VERSION:-unknown}"
 if command -v fastfetch >/dev/null 2>&1; then
   fastfetch
 else
-  printf '\n%s        .-/+oossssoo+/-..            %s%s%s\n' "$C_ORANGE" "$C_GREEN" "${USER:-root}@${HOST_NAME}" "$C_RESET"
+  printf '\n%s        .-/+oossssoo+/-..            %s%s%s\n' "$C_ORANGE" "$C_GREEN" "${USER:-hermes}@${HOST_NAME}" "$C_RESET"
   printf '%s    `:+ssssssssssssssssss+:`        %sOS:%s       %s\n' "$C_ORANGE" "$C_RED" "$C_RESET" "$OS_NAME"
   printf '%s  -+ssssssssssssssssssyyssss+-      %sHost:%s     Railway Container\n' "$C_ORANGE" "$C_RED" "$C_RESET"
   printf '%s .ossssssssssssssssssdMMMNysssso.   %sKernel:%s   %s\n' "$C_ORANGE" "$C_RED" "$C_RESET" "$KERNEL"

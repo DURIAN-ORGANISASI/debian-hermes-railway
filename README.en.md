@@ -37,7 +37,7 @@ Deploy Hermes CLI, access a browser-based shell, and connect Telegram/Discord wi
 <p align="center"><sub>Original vector artwork for this repository's documentation; not an official product screenshot.</sub></p>
 
 > [!WARNING]
-> **This is not a full VPS.** Railway runs an application container, not a virtual server with host access, a desktop GUI, or guaranteed full systemd support. The web terminal runs as root inside the container. Attach a Railway Volume at `/opt/data` before the first Hermes setup so configuration, sessions, memory, and logs survive container recreation.
+> **This is not a full VPS.** Railway runs an application container, not a virtual server with host access, a desktop GUI, or guaranteed full systemd support. The terminal, ttyd, and Gateway run as non-root UID 10001; the entrypoint uses root only during startup to migrate ownership of the `/opt/data` Volume before dropping privileges. Attach the Volume at `/opt/data` before the first Hermes setup so configuration, sessions, memory, and logs survive container recreation.
 
 ## Architecture overview
 
@@ -46,21 +46,22 @@ Deploy Hermes CLI, access a browser-based shell, and connect Telegram/Discord wi
 - **Terminal access:** Browser HTTPS → Railway → `ttyd` → Bash inside the Debian 13 container.
 - **Agent and channels:** Hermes Gateway runs in the container and can connect Telegram/Discord bots after configuration.
 - **Persistent state:** A Railway Volume at `/opt/data` stores Hermes configuration and state; rebuildable tools and caches are kept outside the volume.
-- **Auto-start:** The entrypoint starts the Gateway after `/opt/data/config.yaml` exists when `HERMES_AUTOSTART=true`.
+- **Supervised auto-start:** a process supervisor manages ttyd and the Gateway, restarts the Gateway after unexpected exits, and shuts services down cleanly.
 
 ## Features
 
 - Debian 13 (Trixie slim) base image.
-- Hermes Agent CLI is installed during Docker build using the upstream installer.
+- Hermes Agent CLI v0.23.1 is installed during Docker build from a pinned upstream commit.
 - Messaging, Telegram, and Discord extras are installed and checked at build time.
 - Browser terminal powered by ttyd with username/password authentication and WebSocket Origin checking.
 - Automatic system banner with OS, kernel, architecture, uptime, CPU, memory, disk, timezone, and Gateway status.
 - Git, curl, Python, pip/venv, compiler toolchain, and build libraries.
-- Optional Gateway auto-start after Hermes configuration has been created.
+- ttyd, terminal shells, and the Gateway run as non-root UID 10001.
+- A supervisor manages Gateway restarts and graceful shutdown when Railway stops the container.
 - Default timezone: `Asia/Jakarta`.
 - Hermes state at `/opt/data`; rebuildable tool and cache data live outside persistent storage.
 - ttyd binaries for AMD64 and ARM64.
-- GitHub Actions checks shell syntax, builds the image, and tests terminal authentication.
+- GitHub Actions tests AMD64 and ARM64 builds, authentication, non-root UID, legacy Volume migration, data persistence after container recreation, and credential-safe logs. Trivy scans for HIGH/CRITICAL vulnerabilities; Dependabot checks Docker and Actions weekly.
 
 ## Quick deploy
 
@@ -95,6 +96,8 @@ HERMES_AUTOSTART=true
 | `UV_CACHE_DIR` | Disposable package cache; defaults to `/tmp/uv-cache`. |
 | `HERMES_AUTOSTART` | Starts the Gateway when set to `true` or `1` and a Hermes config exists. |
 | `PORT` | Injected by Railway. Do not set it manually; the local fallback is 8080. |
+
+Keep `HERMES_HOME=/opt/data`, `HERMES_RUNTIME_DIR=/usr/local/share/hermes-tools`, and `UV_CACHE_DIR=/tmp/uv-cache` unchanged; the entrypoint validates these paths before its startup ownership migration. On the first startup after this security update, existing files in `/opt/data` are migrated to UID 10001 without being removed. Large Volumes may take longer.
 
 See [`.env.example`](.env.example) for a reference template. Never commit real passwords, provider API keys, or bot tokens. Avoid creating empty or placeholder token variables in Railway if you already configured the real values through the Hermes wizard.
 
@@ -155,7 +158,7 @@ A bot token authenticates the bot; `DISCORD_ALLOWED_USERS` authorizes users. If 
 - `/usr/local/share/hermes-tools`: rebuildable runtime tools kept outside the persistent Volume.
 - `/tmp/uv-cache`: disposable cache.
 
-Gateway auto-start only happens when `HERMES_AUTOSTART=true` (or `1`) and `/opt/data/config.yaml` exists at container start. If you finish setup while the service is already running, restart/redeploy after setup. The entrypoint retries the Gateway if it exits.
+Gateway auto-start only happens when `HERMES_AUTOSTART=true` (or `1`) and `/opt/data/config.yaml` exists at container start. A process supervisor retries the Gateway after unexpected exits and stops child processes cleanly. If you finish setup while the service is already running, restart/redeploy after setup.
 
 ## Streaming and latency
 
@@ -203,12 +206,16 @@ For deeper diagnostic notes, see the detailed [Indonesian README](README.md).
 
 ## Security
 
-- The public web terminal grants root privileges inside the container; use a long, unique password.
+- The public web terminal runs as non-root UID 10001 inside the container. The entrypoint uses root only for one-time Volume ownership migration at startup; this is not root access to the Railway host.
 - Keep bot tokens and model API keys in Railway Variables or the Hermes setup wizard; never commit them.
 - If a token is exposed, revoke/rotate it in the provider's portal immediately.
 - Do not grant unrestricted access to public bots that can use tools or operate on files.
 - A Railway Volume provides persistence, not backup or access control.
 - Railway resource limits and application-container restrictions still apply; this is not a full VPS.
+
+## Build validation
+
+GitHub Actions checks shell and Python syntax, builds AMD64 and ARM64 images, and tests ttyd authentication, UID 10001, migration of an existing root-owned Volume, data persistence after container recreation, and logs for leaked raw/Base64 credentials. Trivy reports HIGH/CRITICAL vulnerabilities without blocking the build. Dependabot checks Docker and GitHub Actions weekly. CI does not test live model-provider APIs, Telegram/Discord integrations, or a Railway deployment.
 
 ## Sources, attribution, and license
 
@@ -229,6 +236,7 @@ debian-hermes-railway/
 ├── Dockerfile
 ├── entrypoint.sh
 ├── start-hermes
+├── service-supervisor.py
 ├── system-banner.sh
 ├── .env.example
 ├── LICENSE
@@ -242,7 +250,9 @@ debian-hermes-railway/
 │   ├── architecture.svg
 │   ├── architecture.en.svg
 │   └── SOURCES.md
-└── .github/workflows/docker-build.yml
+└── .github/
+    ├── dependabot.yml
+    └── workflows/docker-build.yml
 ```
 
 ---

@@ -4,4 +4,8 @@ if ! command -v hermes >/dev/null 2>&1; then
   echo "Hermes CLI is not installed in PATH." >&2
   exit 1
 fi
+if pgrep -af '[h]ermes gateway run' >/dev/null 2>&1; then
+  echo "Hermes Gateway is already managed by the container supervisor." >&2
+  exit 1
+fi
 exec hermes gateway run

@@ -37,7 +37,7 @@ Deploy Hermes CLI, akses shell lewat browser, dan hubungkan channel Telegram/Dis
 <p align="center"><sub>Ilustrasi vektor orisinal untuk dokumentasi; bukan screenshot produk resmi.</sub></p>
 
 > [!WARNING]
-> **Bukan VPS penuh.** Railway menjalankan container aplikasi, bukan server virtual dengan akses host, desktop GUI, atau jaminan systemd penuh. Terminal web berjalan sebagai root di dalam container. Pasang Railway Volume di `/opt/data` sebelum menjalankan setup Hermes pertama kali agar konfigurasi, sesi, memori, dan log tidak hilang ketika container dibuat ulang.
+> **Bukan VPS penuh.** Railway menjalankan container aplikasi, bukan server virtual dengan akses host, desktop GUI, atau jaminan systemd penuh. Terminal, ttyd, dan Gateway berjalan sebagai user non-root UID 10001; entrypoint menggunakan root hanya saat startup untuk memigrasikan kepemilikan Volume `/opt/data`, lalu menurunkan hak akses. Pasang Railway Volume di `/opt/data` sebelum setup Hermes pertama kali agar konfigurasi, sesi, memori, dan log tetap tersimpan.
 
 ## Arsitektur singkat
 
@@ -46,23 +46,24 @@ Deploy Hermes CLI, akses shell lewat browser, dan hubungkan channel Telegram/Dis
 - **Akses terminal:** Browser HTTPS → Railway → `ttyd` → Bash di container Debian 13.
 - **Agent dan channel:** Hermes Gateway berjalan di container dan dapat menghubungkan bot Telegram/Discord setelah konfigurasi selesai.
 - **Data persisten:** Railway Volume dipasang di `/opt/data` untuk konfigurasi dan state Hermes; tool/cache yang dapat dibuat ulang diarahkan ke luar volume.
-- **Auto-start:** Entry point memulai Gateway setelah `/opt/data/config.yaml` tersedia ketika `HERMES_AUTOSTART=true`.
+- **Auto-start terawasi:** supervisor mengelola ttyd dan Gateway, mengulang Gateway jika keluar, serta menghentikan proses secara terkontrol saat container ditutup.
 
 ## Fitur
 
 - Base image Debian 13 (Trixie) slim.
-- Hermes Agent CLI dipasang pada saat Docker build menggunakan installer resmi Hermes.
+- Hermes Agent CLI v0.23.1 dipasang saat Docker build dari commit upstream yang dipatok.
 - Extra messaging bersama serta extra khusus Telegram dan Discord dipasang dan diperiksa saat Docker build agar kegagalan dependency muncul di Build Logs, bukan baru saat Gateway berjalan.
 - Terminal browser menggunakan ttyd dengan autentikasi username/password dan pemeriksaan Origin.
 - Banner sistem otomatis menampilkan OS, kernel, arsitektur, uptime, CPU, RAM, disk, timezone, dan status Gateway.
 - Git, curl, Python, pip/venv, compiler, dan pustaka build tersedia.
-- Gateway dapat otomatis dimulai setelah konfigurasi Hermes tersedia.
+- ttyd, shell terminal, dan Gateway berjalan sebagai user non-root UID 10001.
+- Supervisor mengelola restart Gateway dan penutupan proses saat Railway menghentikan container.
 - Default timezone Asia/Jakarta.
 - Data Hermes diarahkan ke /opt/data. Tool store dan cache yang bisa dibuat ulang diarahkan di luar volume data persisten.
 - Binary ttyd mendukung AMD64 dan ARM64.
-- GitHub Actions menguji sintaks shell, build Docker image, dan respons HTTP terminal.
+- GitHub Actions menguji build AMD64 dan ARM64, autentikasi, UID non-root, migrasi Volume lama, persistensi data setelah container dibuat ulang, dan log tanpa kredensial. Trivy memindai kerentanan HIGH/CRITICAL; Dependabot memeriksa pembaruan Docker dan Actions mingguan.
 
-Installer memakai opsi --non-interactive dan --skip-browser supaya build tidak menunggu input serta image lebih ringan. Repo tidak mengunci vendor/model tertentu, serta tidak menyimpan token Telegram, token Discord, API key, atau password asli.
+Hermes Agent dipatok pada v0.23.1 (`3b421578588243f920886e6fe79a6faa87ea026e`) dan dipasang sebagai user non-root saat build dengan opsi --non-interactive dan --skip-browser. Unduhan upstream menggunakan retry agar build lebih tahan terhadap HTTP 429 sementara. Repo tidak mengunci vendor/model tertentu, serta tidak menyimpan token Telegram, token Discord, API key, atau password asli.
 
 ## 1. Deploy ke Railway
 
@@ -71,6 +72,8 @@ Installer memakai opsi --non-interactive dan --skip-browser supaya build tidak m
 3. Pastikan Railway membangun dari Dockerfile di root repository. Jangan masukkan start command khusus kecuali memang diperlukan; image sudah memiliki ENTRYPOINT.
 4. Buka service → Settings → Networking → Generate Domain.
 5. Buat Railway Volume dan pasang mount path tepat /opt/data **sebelum melakukan setup Hermes pertama kali**. Ini penting: volume hanya menyimpan path yang dipasang. Tanpa volume di /opt/data, config, token, sesi, memori, dan log Hermes berisiko hilang saat container dibuat ulang.
+
+Pada startup pertama setelah upgrade keamanan, repository memigrasikan kepemilikan file lama di `/opt/data` ke UID 10001 tanpa menghapus isinya. Volume besar dapat membutuhkan waktu lebih lama. Jangan hapus atau format Volume saat proses migrasi.
 6. Buka Variables dan tambahkan nilai dari kotak salin di bagian berikut.
 7. Tunggu deployment selesai dan periksa Build Logs serta Deploy Logs. Buka domain, lalu login menggunakan TERMINAL_USER dan TERMINAL_PASSWORD.
 
@@ -91,8 +94,8 @@ HERMES_AUTOSTART=true
 Aturan variabel:
 - TERMINAL_USER wajib dan tidak boleh berisi titik dua (:).
 - TERMINAL_PASSWORD wajib, minimal 16 karakter; disarankan 24–40 karakter atau lebih. Pakai password acak yang unik untuk setiap service.
-- HERMES_HOME harus tetap /opt/data jika Volume dipasang di /opt/data.
-- HERMES_RUNTIME_DIR harus berada di luar /opt/data supaya tool Python/Node/FFmpeg yang dapat diunduh ulang tidak memenuhi volume.
+- HERMES_HOME harus tetap /opt/data; path ini diwajibkan agar migrasi izin Volume aman.
+- Pertahankan HERMES_RUNTIME_DIR=/usr/local/share/hermes-tools dan UV_CACHE_DIR=/tmp/uv-cache; keduanya harus tetap di luar Volume.
 - UV_CACHE_DIR adalah cache sementara yang aman dibuat ulang.
 - HERMES_AUTOSTART=true memungkinkan Gateway start saat container menyala setelah config Hermes dibuat. Gunakan false hanya untuk diagnosis atau jika ingin menjalankan Gateway manual.
 - Jangan menambahkan PORT secara manual. Railway menyediakan PORT untuk service; image memakai 8080 hanya sebagai nilai fallback.
@@ -154,7 +157,7 @@ hermes gateway status
 hermes status
 ~~~
 
-Lalu restart/redeploy service Railway satu kali agar entrypoint membaca config yang baru dibuat dan memulai Gateway otomatis. **Jangan menjalankan `hermes gateway` di terminal browser sebagai metode permanen.** Perintah itu berjalan di foreground dan dapat berhenti ketika sesi terminal ditutup. Dengan `HERMES_AUTOSTART=true`, entrypoint repo ini yang seharusnya menjalankan Gateway terpisah dari sesi `ttyd`; setelah restart kamu boleh menutup tab terminal. Jangan menjalankan Gateway kedua secara manual pada service yang sama. Jika `hermes status` menunjukkan Gateway stopped, lanjutkan ke bagian Troubleshooting di bawah.
+Lalu restart/redeploy service Railway satu kali agar supervisor membaca config yang baru dibuat dan memulai Gateway otomatis. **Jangan menjalankan `hermes gateway` di terminal browser sebagai metode permanen.** Perintah itu berjalan di foreground dan dapat berhenti ketika sesi terminal ditutup. Dengan `HERMES_AUTOSTART=true`, entrypoint repo ini yang seharusnya menjalankan Gateway terpisah dari sesi `ttyd`; setelah restart kamu boleh menutup tab terminal. Jangan menjalankan Gateway kedua secara manual pada service yang sama. Jika `hermes status` menunjukkan Gateway stopped, lanjutkan ke bagian Troubleshooting di bawah.
 
 ### Pengaturan streaming dan diagnosis respons lambat
 
@@ -235,7 +238,7 @@ Jika Telegram sudah berfungsi tetapi Discord tidak, jangan ubah provider/model a
 - /usr/local/share/hermes-tools — runtime tools yang dapat dibuat ulang. Biarkan terpisah dari /opt/data.
 - /tmp/uv-cache — cache download sementara; boleh hilang saat container dibuat ulang.
 
-Gateway dimulai otomatis hanya ketika HERMES_AUTOSTART=true dan file konfigurasi Hermes sudah tersedia saat container mulai. Bila menyelesaikan wizard ketika service sedang berjalan, restart service setelah setup. Untuk diagnosis saat auto-start dinonaktifkan, jalankan start-hermes dari satu terminal saja, dan jangan menyalakan Gateway manual jika loop auto-start sudah aktif.
+Gateway dimulai otomatis hanya ketika HERMES_AUTOSTART=true dan file konfigurasi Hermes sudah tersedia saat container mulai. Supervisor menjaga proses Gateway dan mengulangnya setelah keluar secara tidak terduga. Bila menyelesaikan wizard ketika service sedang berjalan, restart service setelah setup. Untuk diagnosis saat auto-start dinonaktifkan, jalankan start-hermes dari satu terminal saja, dan jangan menyalakan Gateway manual jika loop auto-start sudah aktif.
 
 ## 7. Variabel opsional untuk token channel
 
@@ -314,11 +317,15 @@ Pasang Railway Volume di /opt/data sebelum menjalankan wizard pertama kali. Volu
 
 ## 9. Keamanan
 
-- Terminal publik menjalankan shell root di dalam container. Password yang kuat wajib.
+- Terminal publik menjalankan shell sebagai user non-root UID 10001 di dalam container. Entrypoint menggunakan root hanya untuk migrasi kepemilikan Volume pada startup pertama; ini bukan akses root ke host Railway.
 - Jangan commit password terminal, API key, atau token bot ke repository.
 - Jangan membagikan token bot pada chat atau screenshot; rotasi/revoke token jika terlanjur bocor.
 - Hindari mengaktifkan akses semua pengguna pada bot yang punya akses ke tools atau terminal.
 - Resource, waktu aktif, dan filesystem tetap mengikuti batas serta kebijakan Railway.
+
+## Pengembangan dan CI
+
+GitHub Actions memeriksa sintaks shell/Python, membangun image untuk AMD64 dan ARM64, lalu menjalankan smoke test autentikasi ttyd, UID 10001, migrasi Volume lama, persistensi data setelah container dibuat ulang, serta pemeriksaan log tanpa password/Base64 credential. Trivy membuat laporan kerentanan HIGH/CRITICAL (report-only, tidak memblokir build). Dependabot memeriksa Docker dan GitHub Actions setiap minggu. CI tidak menguji provider model, Telegram/Discord, atau deployment Railway live.
 
 ## Referensi resmi
 

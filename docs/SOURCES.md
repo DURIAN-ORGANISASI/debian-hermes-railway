@@ -5,7 +5,9 @@ This document records the upstream projects, logos, illustrations, and licensing
 ## Core components
 
 - **Debian 13 (Trixie):** official container base image `debian:trixie-slim`. Project: https://www.debian.org/ — official image: https://hub.docker.com/_/debian
-- **Hermes Agent:** https://github.com/NousResearch/hermes-agent — official documentation: https://hermes-agent.nousresearch.com/docs/getting-started/installation
+- **Hermes Agent v0.23.1:** https://github.com/NousResearch/hermes-agent/releases/tag/v0.23.1 — image pins upstream commit `3b421578588243f920886e6fe79a6faa87ea026e`.
+- **Pinned Hermes installer:** https://github.com/NousResearch/hermes-agent/blob/3b421578588243f920886e6fe79a6faa87ea026e/scripts/install.sh — installer source for the pinned release.
+- **Hermes Agent documentation:** https://hermes-agent.nousresearch.com/docs/getting-started/installation
 - **ttyd 1.7.7:** https://github.com/tsl0922/ttyd — terminal binary is fetched from the upstream GitHub Releases for AMD64 or ARM64; its own license remains applicable.
 - **Railway:** https://railway.com/ — deployment, networking, and volume service, subject to Railway's terms.
 - **Docker:** https://www.docker.com/ — image build and container runtime technology.
@@ -43,3 +45,7 @@ They explain the intended deployment model and do not guarantee a particular liv
 Project files and original artwork covered by the root `LICENSE` are released under the MIT License.
 
 The root MIT license does not replace or override the licenses and terms for Debian's logo, Hermes Agent, ttyd, Debian packages, Railway, Docker, or any other third-party components. Each upstream project and service remains subject to its own terms.
+
+- **Trivy Action:** https://github.com/aquasecurity/trivy-action — Docker image vulnerability reporting in GitHub Actions.
+- **Dependabot version updates:** https://docs.github.com/en/code-security/dependabot/dependabot-version-updates — weekly Docker and Actions update checks.
+- **Docker Buildx / QEMU:** https://github.com/docker/buildx and https://github.com/docker/setup-qemu-action — cross-platform image build and smoke test.
