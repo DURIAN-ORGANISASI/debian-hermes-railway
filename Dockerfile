@@ -33,7 +33,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     && useradd --uid 10001 --gid 10001 --create-home --home-dir /home/hermes --shell /bin/bash hermes \
     && install -d --owner=hermes --group=hermes --mode=0700 /opt/data /home/hermes /tmp/uv-cache \
     && install -d --owner=hermes --group=hermes --mode=0770 /data \
-    && install -d --owner=hermes --group=hermes --mode=0750 /usr/local/share/hermes-tools /usr/local/share/hermes-agent \
+    && install -d --owner=hermes --group=hermes --mode=0750 /usr/local/share/hermes-tools /home/hermes/.local/share \
     && install -d --owner=hermes --group=hermes --mode=0750 /usr/local/share/hermes-tools/installs \
     && install -d --owner=hermes --group=hermes --mode=0750 /usr/local/share/hermes-tools/cache/uv \
     && install -d --owner=hermes --group=hermes --mode=0750 /usr/local/share/hermes-tools/cache/partials \
@@ -60,7 +60,7 @@ USER hermes
 RUN --mount=type=cache,target=/tmp/uv-cache,uid=10001,gid=10001,sharing=locked \
     set -eux; \
     curl --retry 8 --retry-all-errors --retry-delay 3 --retry-max-time 120 -fsSL "https://raw.githubusercontent.com/NousResearch/hermes-agent/${HERMES_COMMIT}/scripts/install.sh" -o /tmp/install-hermes.sh; \
-    bash /tmp/install-hermes.sh --commit "${HERMES_COMMIT}" --dir /usr/local/share/hermes-agent --hermes-home "${HERMES_HOME}" --non-interactive --skip-browser; \
+    bash /tmp/install-hermes.sh --commit "${HERMES_COMMIT}" --dir /home/hermes/.local/share/hermes-agent --hermes-home "${HERMES_HOME}" --non-interactive --skip-browser; \
     command -v hermes; \
     hermes --version; \
     hermes pm install --extra messaging --extra telegram --extra discord; \
@@ -76,10 +76,10 @@ COPY start-hermes /usr/local/bin/start-hermes
 RUN chmod 0755 /usr/local/bin/entrypoint.sh /usr/local/bin/service-supervisor.py /usr/local/bin/start-hermes /etc/profile.d/00-system-banner.sh \
     && bash -n /usr/local/bin/entrypoint.sh /usr/local/bin/start-hermes /etc/profile.d/00-system-banner.sh \
     && python3 -m py_compile /usr/local/bin/service-supervisor.py \
-    && chown -R --no-dereference hermes:hermes /opt/data /usr/local/share/hermes-tools /usr/local/share/hermes-agent /home/hermes /tmp/uv-cache /data \
+    && chown -R --no-dereference hermes:hermes /opt/data /usr/local/share/hermes-tools /home/hermes /tmp/uv-cache /data \
     && chmod 0700 /opt/data /home/hermes /tmp/uv-cache \
     && chmod 0770 /data \
-    && chmod 0750 /usr/local/share/hermes-tools /usr/local/share/hermes-agent
+    && chmod 0750 /usr/local/share/hermes-tools
 
 EXPOSE 8080
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
