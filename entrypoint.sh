@@ -63,6 +63,7 @@ migrate_volume_ownership() {
 }
 
 migrate_volume_ownership "${HERMES_HOME}"
+migrate_volume_ownership "${HERMES_RUNTIME_DIR}"
 migrate_volume_ownership /data
 chmod 0700 "${HERMES_HOME}" /home/hermes "${UV_CACHE_DIR}"
 chmod 0770 /data
