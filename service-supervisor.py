@@ -43,7 +43,7 @@ async def main() -> int:
         log("Refusing to run services as root; expected UID 10001.")
         return 1
     env = os.environ.copy()
-    env.update({"HOME":"/home/hermes","USER":"hermes","LOGNAME":"hermes","PATH":"/home/hermes/.local/bin:/home/hermes/.local/share/uv/bin:/usr/local/bin:/usr/bin:/bin"})
+    env.update({"HOME":"/home/hermes","USER":"hermes","LOGNAME":"hermes","PATH":"/home/hermes/.local/bin:/home/hermes/.local/share/uv/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"})
     terminal_user, terminal_password = env.get("TERMINAL_USER",""), env.get("TERMINAL_PASSWORD","")
     port = env.get("PORT","8080")
     if not terminal_user or not terminal_password:
